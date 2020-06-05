@@ -1,0 +1,57 @@
+#!/bin/bash
+OUTPUT_FILE=$(pwd)
+NGINX_VERSION="1.17.9"
+TARGET_BUILD="local"
+
+#
+#   Função de ajuda para utilização do Script
+usage(){
+    echo ""
+    echo ":: Parametros"
+    echo "-v) Informe a versao do Nginx"
+    echo "-o) Informe o caminho para salvar o binario do Nginx"
+    echo ""
+    echo ":: Valores atuais"
+    echo "Onde compilar: ${TARGET_BUILD}"
+    echo "Versao Nginx: ${NGINX_VERSION}"
+    echo "Salvar em: ${OUTPUT_FILE}/nginx-${NGINX_VERSION}-1.el7.noarch.rpm"
+    echo ""
+    exit 0
+}
+
+#
+#   Função que build o nginx utilizando uma imagem Docker
+docker_build(){
+    command -v docker > /dev/null
+    if [ $? == 1 ];
+    then
+        echo -e "\n!!ERRO!!"
+        echo -e "\nDocker nao instalado!"
+        echo -e "\nVocê pode tentar efetuar o build utilizando a tag:"
+        echo -e "\n\tbuild.sh -t local"
+        echo -e "\n\tbuild.sh -t vagrant\n"
+        exit 1
+    fi
+
+    CONTAINER_NAME=nginx_auth_$(date +%Y%m%d%H%M%S)
+
+    docker build -t centos-nginx-auth .
+
+    docker run -itd --name ${CONTAINER_NAME} centos-nginx-auth
+
+    docker cp ${CONTAINER_NAME}:/root/rpmbuild/RPMS/noarch/nginx-${NGINX_VERSION}-1.el7.noarch.rpm ${OUTPUT_FILE}/nginx-${NGINX_VERSION}-1.el7.noarch.rpm
+
+    docker rm -f ${CONTAINER_NAME}
+}
+
+
+while getopts ":hvo:" OPT; do
+  case "$OPT" in
+    "h") usage;;
+    "v") NGINX_VERSION=$OPTARG;;
+    "o") OUTPUT_FILE=$OPTARG;;
+    "?") exit -1;;
+  esac
+done
+
+docker_build
